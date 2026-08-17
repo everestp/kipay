@@ -1,0 +1,4 @@
+protoc --proto_path=proto \
+  --go_out=modules/settlement/proto --go_opt=paths=source_relative \
+  --go-grpc_out=modules/settlement/proto --go-grpc_opt=paths=source_relative \
+  proto/verifier.proto
