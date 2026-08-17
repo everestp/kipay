@@ -13,11 +13,11 @@ func NewTransactionService(repo *repository.TransactionRepository) *TransactionS
 	return &TransactionService{repo: repo}
 }
 
-func (s *TransactionService) GetMerchantInvoices(merchantID string, status string, limit int, offset int) ([]dto.InvoiceHistoryItem, error) {
+func (s *TransactionService) GetMerchantInvoices(merchantID string, status string, limit int, offset int) ([]dto.LinkInvoiceHistoryItem, error) {
 	if limit <= 0 {
 		limit = 20
 	}
-	return s.repo.ListDirectInvoices(merchantID, status, limit, offset)
+	return s.repo.ListAllInvoices(merchantID, status, limit, offset)
 }
 func (s *TransactionService) GetMerchantLinkInvoices(merchantID string , status string, limit int, offset int) ([]dto.LinkInvoiceHistoryItem, error) {
 	if limit <= 0 {

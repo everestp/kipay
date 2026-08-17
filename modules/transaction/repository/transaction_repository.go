@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+	"strconv"
 	"time"
 
 	"go-backend/modules/transaction/dto"
@@ -91,6 +92,132 @@ func (r *TransactionRepository) ListLinkInvoices(merchantID string, statusFilter
 	}
 	return list, nil
 }
+func (r *TransactionRepository) ListAllInvoices(
+	merchantID string,
+	statusFilter string,
+	limit int,
+	offset int,
+) ([]dto.LinkInvoiceHistoryItem, error) {
+
+	query := `
+		SELECT
+			id,
+			amount_usd,
+			currency,
+			network,
+			payment_link_id,
+			order_id,
+			amount_crypto,
+			status,
+			deposit_address,
+			created_at,
+			confirmed_at
+		FROM (
+			SELECT
+				id,
+				amount_usd,
+				currency,
+				network,
+				payment_link_id,
+				NULL::text AS order_id,
+				amount_crypto,
+				status,
+				deposit_address,
+				created_at,
+				confirmed_at
+			FROM payment_link_invoices
+			WHERE merchant_id = $1
+
+			UNION ALL
+
+			SELECT
+				id,
+				amount_usd,
+				currency,
+				network,
+				NULL::text AS payment_link_id,
+				order_id,
+				amount_crypto,
+				status,
+				deposit_address,
+				created_at,
+				confirmed_at
+			FROM direct_invoices
+			WHERE merchant_id = $1
+		) AS invoices
+	`
+
+	var args []interface{}
+	args = append(args, merchantID)
+
+	if statusFilter != "" {
+		query += ` WHERE status = $2`
+		args = append(args, statusFilter)
+	}
+
+	query += ` ORDER BY created_at DESC LIMIT $` +
+		strconv.Itoa(len(args)+1) +
+		` OFFSET $` +
+		strconv.Itoa(len(args)+2)
+
+	args = append(args, limit, offset)
+
+	rows, err := r.db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []dto.LinkInvoiceHistoryItem
+
+	for rows.Next() {
+		var item dto.LinkInvoiceHistoryItem
+		var createdAt time.Time
+		var confirmedAt sql.NullTime
+		var paymentLinkID sql.NullString
+		var orderID sql.NullString
+
+		err := rows.Scan(
+			&item.ID,
+			&item.AmountUSD,
+			&item.Currency,
+			&item.Network,
+			&paymentLinkID,
+			&orderID,
+			&item.AmountCrypto,
+			&item.Status,
+			&item.DepositAddress,
+			&createdAt,
+			&confirmedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		item.CreatedAt = createdAt.Format(time.RFC3339)
+
+		if confirmedAt.Valid {
+			confStr := confirmedAt.Time.Format(time.RFC3339)
+			item.ConfirmedAt = &confStr
+		}
+
+		if paymentLinkID.Valid {
+			item.PaymentLinkId = paymentLinkID.String
+		}
+
+		// If your DTO has OrderID:
+		
+
+		list = append(list, item)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return list, nil
+}
+
 
 func (r *TransactionRepository) ListLinkInvoicesByLinkId(merchantID string, paymetlink_id string, statusFilter string, limit int, offset int) ([]dto.LinkInvoiceHistoryItem, error) {
   query := `

@@ -54,7 +54,71 @@ func NewRustVerificationClient(
 //   - network
 //   - transaction status
 //   - block/slot
-func (c *RustVerificationClient) VerifyAndSettleTransaction(
+func (c *RustVerificationClient) VerifyAndSettleLinkInvoiceTransaction(
+	ctx context.Context,
+	invoiceID string,
+	txHash string,
+	network string,
+	amountPaid float64,
+	currency string,
+	senderAddress string,
+	receiverAddress string,
+	blockNumber int64,
+) (
+	bool,
+	string,
+	string,
+	error,
+) {
+	// Validate client
+	if c == nil || c.client == nil {
+		return false, "", "",
+			fmt.Errorf("rust verification client is not initialized")
+	}
+
+	// Build protobuf request
+	req := &settlementpb.SettlementRequest{
+		InvoiceId:       invoiceID,
+		TxHash:          txHash,
+		Network:         network,
+		AmountPaid:      amountPaid,
+		Currency:        currency,
+		SenderAddress:   senderAddress,
+		ReceiverAddress: receiverAddress,
+		BlockNumber:     blockNumber,
+	}
+
+	// Call Rust verification engine
+	resp, err := c.client.VerifyAndSettleTransaction(
+		ctx,
+		req,
+	)
+
+	if err != nil {
+		return false, "", "",
+			fmt.Errorf(
+				"gRPC verification execution failed: %w",
+				err,
+			)
+	}
+
+	if resp == nil {
+		return false, "", "",
+			fmt.Errorf(
+				"rust verification engine returned empty response",
+			)
+	}
+
+	// Return:
+	// success
+	// merchant_id
+	// message
+	return resp.GetSuccess(),
+		resp.GetMerchantId(),
+		resp.GetMessage(),
+		nil
+}
+func (c *RustVerificationClient) VerifyAndSettleAPIInvoiceTransaction(
 	ctx context.Context,
 	invoiceID string,
 	txHash string,

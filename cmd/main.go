@@ -228,7 +228,8 @@ func main() {
 	apiRouter.HandleFunc("/invoices/{id}/status", invoiceCtrl.GetInvoiceStatus).Methods(http.MethodGet)
 
 	// Internal Settlement Webhooks
-	apiRouter.HandleFunc("/internal/settlement", settlementCtrl.HandleVerificationEvent).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/internal/link/settlement", settlementCtrl.HandleLinkInvoiceVerificationEvent).Methods(http.MethodPost)
+		apiRouter.HandleFunc("/internal/api/settlement", settlementCtrl.HandleAPIInvpiceVerificationEvent).Methods(http.MethodPost)
 
 
 	// ------------------------------------------------------------
