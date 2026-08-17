@@ -1,0 +1,58 @@
+/api/v1
+
+PUBLIC
+POST   /auth/register
+POST   /auth/login
+POST   /auth/logout
+
+GET    /payment-links/{linkId}
+POST   /payment-links/invoices
+GET    /invoices/{id}/status
+
+API KEY
+POST   /invoices
+GET    /invoices/{id}
+GET    /invoices/{id}/status
+
+POST   /payment-links
+GET    /payment-links/{id}
+
+GET    /transactions
+GET    /transactions/{id}
+
+DASHBOARD AUTH
+POST   /dashboard/payment-links
+GET    /dashboard/payment-links
+
+POST   /dashboard/invoices
+
+POST   /dashboard/api-keys
+GET    /dashboard/api-keys
+DELETE /dashboard/api-keys/{id}
+
+POST   /dashboard/kyc/documents
+GET    /dashboard/kyc/status
+
+GET    /dashboard/metrics
+
+POST   /dashboard/payouts
+
+POST   /dashboard/wallets
+GET    /dashboard/wallets
+GET    /dashboard/wallets/{id}
+PUT    /dashboard/wallets/{id}
+DELETE /dashboard/wallets/{id}
+
+GET    /dashboard/transactions/invoices
+GET    /dashboard/transactions/link-invoices
+GET    /dashboard/transactions/link-invoices/{payment-link-id}
+GET    /dashboard/transactions/settled
+
+GET    /dashboard/auth/me
+
+INTERNAL
+POST   /internal/settlement
+
+ADMIN
+GET    /admin/merchants
+PUT    /admin/merchants/{merchantId}/status
