@@ -171,3 +171,14 @@ func mapToInvoiceResponse(inv *mo.Invoice) *dto.InvoiceResponse {
         ConfirmedAt:    confirmedAtStr,
     }
 }
+// ==========================================
+// GET DIRECT INVOICE BY ID
+// ==========================================
+func (s *InvoiceService) GetDirectInvoiceByID(invoiceID string) (*dto.InvoiceResponse, error) {
+	inv, err := s.invoiceRepo.GetDirectInvoiceByID(invoiceID)
+	if err != nil {
+		return nil, errors.New("direct invoice not found")
+	}
+
+	return mapToInvoiceResponse(inv), nil
+}

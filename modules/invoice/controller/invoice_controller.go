@@ -8,6 +8,8 @@ import (
 	"go-backend/modules/invoice/service"
 	"go-backend/pkg/middleware"
 	"go-backend/pkg/utils"
+
+	"github.com/gorilla/mux"
 )
 
 type InvoiceController struct {
@@ -111,4 +113,32 @@ func (c *InvoiceController) GetInvoiceStatus(w http.ResponseWriter, r *http.Requ
     }
 
     utils.SuccessResponse(w, http.StatusOK, "Invoice status fetched successfully", res)
+}
+
+
+// ==========================================
+// GET DIRECT INVOICE BY INVOICE ID
+// GET /invoices/direct/{invoiceID}
+// ==========================================
+func (c *InvoiceController) GetDirectInvoiceByID(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	invoiceID := vars["invoiceID"]
+
+	if invoiceID == "" {
+		utils.ErrorResponse(w, http.StatusBadRequest, "Invoice ID is required")
+		return
+	}
+
+	res, err := c.invoiceService.GetDirectInvoiceByID(invoiceID)
+	if err != nil {
+		utils.ErrorResponse(w, http.StatusNotFound, err.Error())
+		return
+	}
+
+	utils.SuccessResponse(
+		w,
+		http.StatusOK,
+		"Direct invoice fetched successfully",
+		res,
+	)
 }

@@ -77,31 +77,35 @@ func (r *MerchantRepository) GetByID(id string) (*mo.Merchant, string, error) {
 // ==========================================
 // GET MERCHANT WALLET BY NETWORK (For Non-Custodial Payouts)
 // ==========================================
-func (r *MerchantRepository) GetWalletByNetwork(merchantID string, network string) (string, error) {
-    var query string
-    switch network {
-    case "solana":
-        query = `SELECT COALESCE(solana_wallet, '') FROM merchants WHERE id = $1`
-    case "polygon":
-        query = `SELECT COALESCE(polygon_wallet, '') FROM merchants WHERE id = $1`
-    case "ethereum":
-        query = `SELECT COALESCE(ethereum_wallet, '') FROM merchants WHERE id = $1`
-    default:
-        return "", fmt.Errorf("unsupported network: %s", network)
-    }
+func (r *MerchantRepository) GetWalletByNetwork(
+	merchantID string,
+	network string,
+) (string, error) {
 
-    var wallet string
-    err := r.db.QueryRow(query, merchantID).Scan(&wallet)
-    if err != nil {
-        if err == sql.ErrNoRows {
-            return "", errors.New("merchant not found")
-        }
-        return "", err
-    }
+	var wallet string
 
-    if wallet == "" {
-        return "", fmt.Errorf("merchant has not configured a payout wallet for network %s", network)
-    }
+	query := `
+		SELECT wallet_address
+		FROM merchant_wallets
+		WHERE merchant_id = $1
+		  AND network = $2
+		  AND is_active = true
+		LIMIT 1
+	`
 
-    return wallet, nil
+	err := r.db.QueryRow(query, merchantID, network).Scan(&wallet)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", fmt.Errorf(
+				"no active wallet configured for merchant %s on network %s",
+				merchantID,
+				network,
+			)
+		}
+
+		return "", err
+	}
+
+	return wallet, nil
 }

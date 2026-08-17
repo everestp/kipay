@@ -190,3 +190,63 @@ func (r *InvoiceRepository) FindInvoiceAnyType(invoiceID string) (*mo.Invoice, e
 
     return &inv, nil
 }
+// ==========================================
+// GET DIRECT INVOICE BY ID
+// ==========================================
+func (r *InvoiceRepository) GetDirectInvoiceByID(invoiceID string) (*mo.Invoice, error) {
+	query := `
+		SELECT
+			id,
+			merchant_id,
+			order_id,
+			amount_usd,
+			currency,
+			network,
+			amount_crypto,
+			status,
+			deposit_address,
+			qr_code_data,
+			expires_at,
+			confirmed_at,
+			created_at
+		FROM direct_invoices
+		WHERE id = $1
+	`
+
+	var inv mo.Invoice
+	var orderID sql.NullString
+	var confirmedAt sql.NullTime
+
+	err := r.db.QueryRow(query, invoiceID).Scan(
+		&inv.ID,
+		&inv.MerchantID,
+		&orderID,
+		&inv.AmountUSD,
+		&inv.Currency,
+		&inv.Network,
+		&inv.AmountCrypto,
+		&inv.Status,
+		&inv.DepositAddress,
+		&inv.QRCodeData,
+		&inv.ExpiresAt,
+		&confirmedAt,
+		&inv.CreatedAt,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("direct invoice not found")
+		}
+		return nil, fmt.Errorf("failed to get direct invoice: %v", err)
+	}
+
+	if orderID.Valid {
+		inv.OrderID = &orderID.String
+	}
+
+	if confirmedAt.Valid {
+		inv.ConfirmedAt = &confirmedAt.Time
+	}
+
+	return &inv, nil
+}

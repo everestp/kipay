@@ -240,6 +240,12 @@ func main() {
 
 	// Accessible at: POST /api/v1/external/invoices
 	apiApiKeyRouter.HandleFunc("/invoices", invoiceCtrl.CreateDirectInvoice).Methods(http.MethodPost)
+	apiApiKeyRouter.HandleFunc("/invoices/{invoice_id}", invoiceCtrl.GetInvoiceStatus).Methods(http.MethodPost)
+	apiRouter.HandleFunc(
+	"/invoices/direct/{invoiceID}",
+	invoiceCtrl.GetDirectInvoiceByID,
+).Methods(http.MethodGet)
+
 
 
 	// ------------------------------------------------------------
