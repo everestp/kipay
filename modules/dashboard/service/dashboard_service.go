@@ -14,5 +14,5 @@ func NewDashboardService(repo *repository.DashboardRepository) *DashboardService
 }
 
 func (s *DashboardService) GetMetrics(merchantID string) (*dto.DashboardMetricsResponse, error) {
-	return s.repo.GetMerchantMetrics(merchantID)
+	return s.repo.GetDashboardMetrics(merchantID)
 }

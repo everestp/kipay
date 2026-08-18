@@ -2,6 +2,8 @@ package repository
 
 import (
 	"database/sql"
+	"fmt"
+
 	"go-backend/modules/dashboard/dto"
 )
 
@@ -12,43 +14,88 @@ type DashboardRepository struct {
 func NewDashboardRepository(db *sql.DB) *DashboardRepository {
 	return &DashboardRepository{db: db}
 }
+func (r *DashboardRepository) GetDashboardMetrics(
+	merchantID string,
+) (*dto.DashboardMetricsResponse, error) {
 
-func (r *DashboardRepository) GetMerchantMetrics(merchantID string) (*dto.DashboardMetricsResponse, error) {
+	query := `
+		SELECT
+			COALESCE(
+				SUM(amount_usd) FILTER (
+					WHERE status = 'CONFIRMED'
+				),
+				0
+			) AS total_volume_usd,
+
+			COUNT(*) FILTER (
+				WHERE status = 'CONFIRMED'
+			) AS successful_payments_count,
+
+			COUNT(*) FILTER (
+				WHERE status = 'PENDING'
+			) AS pending_invoices_count,
+
+			COALESCE(
+				(
+					COUNT(*) FILTER (
+						WHERE status = 'CONFIRMED'
+					)::float
+					/
+					NULLIF(
+						COUNT(*) FILTER (
+							WHERE status IN ('CONFIRMED', 'FAILED', 'EXPIRED')
+						),
+						0
+					)
+				) * 100,
+				0
+			) AS success_rate
+
+		FROM (
+			SELECT
+				amount_usd,
+				status
+			FROM payment_link_invoices
+			WHERE merchant_id = $1
+
+			UNION ALL
+
+			SELECT
+				amount_usd,
+				status
+			FROM direct_invoices
+			WHERE merchant_id = $1
+		) AS invoices
+	`
+
 	var metrics dto.DashboardMetricsResponse
 
-	// 1. Total volume and successful payments count from confirmed invoices / transactions
-	queryVolume := `
-		SELECT COALESCE(SUM(amount_usd), 0.00), COUNT(id)
-		FROM invoices
-		WHERE merchant_id = $1 AND status = 'CONFIRMED'
-	`
-	_ = r.db.QueryRow(queryVolume, merchantID).Scan(&metrics.TotalVolumeUSD, &metrics.SuccessfulPaymentsCount)
+	err := r.db.QueryRow(query, merchantID).Scan(
+		&metrics.TotalVolumeUSD,
+		&metrics.SuccessfulPaymentsCount,
+		&metrics.PendingInvoicesCount,
+		&metrics.SuccessRate,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get invoice dashboard metrics: %w", err)
+	}
 
-	// 2. Pending invoices count
-	queryPending := `
-		SELECT COUNT(id)
-		FROM invoices
-		WHERE merchant_id = $1 AND status = 'PENDING'
-	`
-	_ = r.db.QueryRow(queryPending, merchantID).Scan(&metrics.PendingInvoicesCount)
-
-	// 3. Active payment links count
-	queryLinks := `
-		SELECT COUNT(id)
+	// payment_links uses is_active, NOT status.
+	activeLinksQuery := `
+		SELECT COUNT(*)
 		FROM payment_links
-		WHERE merchant_id = $1 AND is_active = TRUE
+		WHERE merchant_id = $1
+		  AND is_active = TRUE
 	`
-	_ = r.db.QueryRow(queryLinks, merchantID).Scan(&metrics.ActivePaymentLinksCount)
 
-	// 4. Calculate success rate percentage
-	var totalInvoices int
-	queryTotal := `SELECT COUNT(id) FROM invoices WHERE merchant_id = $1 AND status != 'PENDING'`
-	_ = r.db.QueryRow(queryTotal, merchantID).Scan(&totalInvoices)
+	err = r.db.QueryRow(activeLinksQuery, merchantID).
+		Scan(&metrics.ActivePaymentLinksCount)
 
-	if totalInvoices > 0 {
-		metrics.SuccessRate = (float64(metrics.SuccessfulPaymentsCount) / float64(totalInvoices)) * 100.0
-	} else {
-		metrics.SuccessRate = 100.0
+	if err != nil {
+		return nil, fmt.Errorf(
+			"failed to get active payment links count: %w",
+			err,
+		)
 	}
 
 	return &metrics, nil
