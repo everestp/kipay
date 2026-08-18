@@ -184,7 +184,7 @@ func main() {
 	// Settlement / Rust gRPC
 	grpcAddr := os.Getenv("RUST_GRPC_ADDR")
 	if grpcAddr == "" {
-		grpcAddr = "localhost:50051"
+		grpcAddr = "https://grpc.kipay.xyz:443"
 	}
 	rustClient, err := settlementClient.NewRustVerificationClient(grpcAddr)
 	if err != nil {
