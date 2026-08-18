@@ -1,0 +1,44 @@
+# 1. Stop old container
+sudo docker stop kipay-api
+
+# 2. Remove old container
+sudo docker rm kipay-api
+
+# 3. Rebuild image with your latest code
+sudo docker build -t kipay-api .
+
+# 4. Run new container on port 8081
+sudo docker run -d \
+  --name kipay-api \
+  -p 8081:8081 \
+  --env-file .env \
+  kipay-api
+
+# 5. Check container
+sudo docker ps
+
+# 6. Check logs
+sudo docker logs -f kipay-api
+
+
+
+sudo docker system prune -a
+
+
+
+
+# 1. Build gRPC image
+sudo docker build -t grpc-kipay .
+
+# 2. Run gRPC container
+sudo docker run -d \
+  --name grpc-kipay \
+  -p 50051:50051 \
+  --env-file .env \
+  grpc-kipay
+
+# 3. Check container
+sudo docker ps
+
+# 4. Check gRPC logs
+sudo docker logs --tail 200 grpc-kipay
