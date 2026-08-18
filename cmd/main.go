@@ -182,10 +182,10 @@ func main() {
 	dashboardCtrl := dashboardController.NewDashboardController(dashboardServiceInstance)
 
 	// Settlement / Rust gRPC
-	grpcAddr := os.Getenv("RUST_GRPC_ADDR")
-	if grpcAddr == "" {
-		grpcAddr = "https://grpc.kipay.xyz:443"
-	}
+grpcAddr := os.Getenv("RUST_GRPC_ADDR")
+if grpcAddr == "" {
+    grpcAddr = "grpc.kipay.xyz:443"
+}
 	rustClient, err := settlementClient.NewRustVerificationClient(grpcAddr)
 	if err != nil {
 		log.Fatalf("Failed to connect to Rust verification engine via gRPC: %v", err)

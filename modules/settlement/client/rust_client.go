@@ -2,10 +2,12 @@ package client
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/credentials"
+	
 
 	settlementpb "go-backend/modules/settlement/proto"
 )
@@ -20,12 +22,14 @@ type RustVerificationClient struct {
 func NewRustVerificationClient(
 	target string,
 ) (*RustVerificationClient, error) {
-	conn, err := grpc.NewClient(
-		target,
-		grpc.WithTransportCredentials(
-			insecure.NewCredentials(),
-		),
-	)
+conn, err := grpc.NewClient(
+    target,
+    grpc.WithTransportCredentials(
+        credentials.NewTLS(&tls.Config{
+            ServerName: "grpc.kipay.xyz",
+        }),
+    ),
+)
 	if err != nil {
 		return nil, fmt.Errorf(
 			"failed to create gRPC client for Rust engine at %s: %w",
