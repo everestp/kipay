@@ -36,7 +36,7 @@ RUN apk add --no-cache ca-certificates
 COPY --from=builder /app/kipay-backend .
 
 # REST API
-EXPOSE 8080
+EXPOSE 8081
 
 # Start API
 CMD ["./kipay-backend"]
