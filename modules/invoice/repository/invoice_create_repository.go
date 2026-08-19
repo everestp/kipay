@@ -214,13 +214,13 @@ func (r *InvoiceRepository) GetDirectInvoiceByID(invoiceID string) (*mo.Invoice,
 	`
 
 	var inv mo.Invoice
-	var orderID sql.NullString
+	// var orderID sql.NullString
 	var confirmedAt sql.NullTime
 
 	err := r.db.QueryRow(query, invoiceID).Scan(
 		&inv.ID,
 		&inv.MerchantID,
-		&orderID,
+		&inv.OrderID,
 		&inv.AmountUSD,
 		&inv.Currency,
 		&inv.Network,
@@ -240,9 +240,7 @@ func (r *InvoiceRepository) GetDirectInvoiceByID(invoiceID string) (*mo.Invoice,
 		return nil, fmt.Errorf("failed to get direct invoice: %v", err)
 	}
 
-	if orderID.Valid {
-		inv.OrderID = &orderID.String
-	}
+
 
 	if confirmedAt.Valid {
 		inv.ConfirmedAt = &confirmedAt.Time

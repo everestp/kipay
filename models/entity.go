@@ -102,7 +102,7 @@ type Invoice struct {
     ID                  string     `json:"id" db:"id"`
     MerchantID          string     `json:"merchant_id" db:"merchant_id"`
     PaymentLinkID       *string    `json:"payment_link_id,omitempty" db:"payment_link_id"`
-    OrderID             *string    `json:"order_id,omitempty" db:"order_id"`
+    OrderID             string    `json:"order_id,omitempty" db:"order_id"`
     AmountUSD           float64    `json:"amount_usd" db:"amount_usd"`
     Currency            string     `json:"currency" db:"currency"`
     Network             string     `json:"network" db:"network"`

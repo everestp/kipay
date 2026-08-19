@@ -16,6 +16,7 @@ type SettlementController struct {
 // SubmitTransactionRequest aligns 1:1 with settlement.proto payload
 type VerifySettlementRequest struct {
     InvoiceID      string  `json:"invoice_id"`
+	OrderID        string   `json:"order_id"`
     TxHash         string  `json:"tx_hash"`
     Network        string  `json:"network"`
     AmountPaid     float64 `json:"amount_paid"`
@@ -23,6 +24,7 @@ type VerifySettlementRequest struct {
     SenderAddress  string  `json:"sender_address"`
     ReceiverAddress string `json:"receiver_address"`
     BlockNumber    int64   `json:"block_number"`
+
 }
 func NewSettlementController(settlementService *service.SettlementService) *SettlementController {
 	return &SettlementController{
@@ -47,6 +49,7 @@ func (c *SettlementController) HandleLinkInvoiceVerificationEvent(
 
 	// Basic validation
 	if req.InvoiceID == "" ||
+	req.OrderID == "" ||
 		req.TxHash == "" ||
 		req.Network == "" ||
 		req.Currency == "" ||
@@ -166,6 +169,7 @@ func (c *SettlementController) HandleAPIInvpiceVerificationEvent(
 	merchantID, err := c.settlementService.ProcessAPIInVoiceSettlement(
 		r.Context(),
 		req.InvoiceID,
+		req.OrderID,
 		req.TxHash,
 		req.Network,
 		req.AmountPaid,
@@ -173,6 +177,8 @@ func (c *SettlementController) HandleAPIInvpiceVerificationEvent(
 		req.SenderAddress,
 		req.ReceiverAddress,
 		req.BlockNumber,
+
+
 	)
 
 	if err != nil {

@@ -19,6 +19,7 @@ type CreateDirectInvoiceRequest struct {
 // InvoiceResponse is the unified response sent back to the checkout frontend or e-commerce API caller
 type InvoiceResponse struct {
     InvoiceID      string  `json:"invoice_id"`
+    OrderID       string   `json:"order_id"`
     MerchantID     string  `json:"merchant_id"`
     AmountUSD      float64 `json:"amount_usd"`
     Currency       string  `json:"currency"`

@@ -599,5 +599,5 @@ func (r *SettlementRepository) RecordAPIInvoiceSettlement(
 		)
 	}
 
-	return strconv.FormatInt(transactionID, 10), nil
+	return  merchantID , nil
 }

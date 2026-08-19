@@ -7,7 +7,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	
+
 
 	settlementpb "go-backend/modules/settlement/proto"
 )
@@ -125,6 +125,7 @@ func (c *RustVerificationClient) VerifyAndSettleLinkInvoiceTransaction(
 func (c *RustVerificationClient) VerifyAndSettleAPIInvoiceTransaction(
 	ctx context.Context,
 	invoiceID string,
+	order  string,
 	txHash string,
 	network string,
 	amountPaid float64,

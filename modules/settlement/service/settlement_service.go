@@ -102,7 +102,7 @@ func (s *SettlementService) ProcessLinkInVoiceSettlement(
 	// =========================================================
 
 	success,
-		resolvedMerchantID,
+		_,
 		message,
 		err :=
 		s.rustClient.VerifyAndSettleLinkInvoiceTransaction(
@@ -164,25 +164,13 @@ func (s *SettlementService) ProcessLinkInVoiceSettlement(
 	// 5. USE MERCHANT ID FROM RUST IF AVAILABLE
 	// =========================================================
 
-	if resolvedMerchantID != "" {
-		merchantID = resolvedMerchantID
-	}
+
 
 	// =========================================================
 	// 6. DISPATCH WEBHOOK
 	// =========================================================
 
-	s.dispatchInvoiceConfirmedWebhook(
-		merchantID,
-		invoiceID,
-		txHash,
-		network,
-		amountPaid,
-		currency,
-		senderAddress,
-		receiverAddress,
-		blockNumber,
-	)
+
 
 	// =========================================================
 	// 7. SUCCESS LOG
@@ -210,6 +198,7 @@ func (s *SettlementService) ProcessLinkInVoiceSettlement(
 func (s *SettlementService) ProcessAPIInVoiceSettlement(
 	ctx context.Context,
 	invoiceID string,
+	orderID  string,
 	txHash string,
 	network string,
 	amountPaid float64,
@@ -268,12 +257,13 @@ func (s *SettlementService) ProcessAPIInVoiceSettlement(
 	// =========================================================
 
 	success,
-		resolvedMerchantID,
+		_,
 		message,
 		err :=
 		s.rustClient.VerifyAndSettleAPIInvoiceTransaction(
 			ctx,
 			invoiceID,
+			orderID,
 			txHash,
 			network,
 			amountPaid,
@@ -330,9 +320,6 @@ func (s *SettlementService) ProcessAPIInVoiceSettlement(
 	// 5. USE MERCHANT ID FROM RUST IF AVAILABLE
 	// =========================================================
 
-	if resolvedMerchantID != "" {
-		merchantID = resolvedMerchantID
-	}
 
 	// =========================================================
 	// 6. DISPATCH WEBHOOK
@@ -341,6 +328,7 @@ func (s *SettlementService) ProcessAPIInVoiceSettlement(
 	s.dispatchInvoiceConfirmedWebhook(
 		merchantID,
 		invoiceID,
+		orderID,
 		txHash,
 		network,
 		amountPaid,
@@ -364,6 +352,7 @@ func (s *SettlementService) ProcessAPIInVoiceSettlement(
 		amountPaid,
 		currency,
 		blockNumber,
+
 	)
 
 	return merchantID, nil
@@ -372,10 +361,17 @@ func (s *SettlementService) ProcessAPIInVoiceSettlement(
 // ============================================================
 // INVOICE CONFIRMED WEBHOOK
 // ============================================================
-
+	/*
+	 * Payment settlement has already been committed
+	 * successfully at this point.
+	 *
+	 * Therefore webhook failure MUST NOT cause the
+	 * payment settlement itself to fail.
+	 */
 func (s *SettlementService) dispatchInvoiceConfirmedWebhook(
 	merchantID string,
 	invoiceID string,
+	orderID string,
 	txHash string,
 	network string,
 	amountPaid float64,
@@ -384,37 +380,27 @@ func (s *SettlementService) dispatchInvoiceConfirmedWebhook(
 	receiverAddress string,
 	blockNumber int64,
 ) {
-
-	/*
-	 * Payment settlement has already been committed
-	 * successfully at this point.
-	 *
-	 * Therefore webhook failure MUST NOT cause the
-	 * payment settlement itself to fail.
-	 */
-
 	if s.webhookSvc == nil {
 		log.Printf(
 			"[Webhook] Webhook service is nil | merchant=%s | invoice=%s",
 			merchantID,
 			invoiceID,
 		)
-
 		return
 	}
 
 	payload := map[string]interface{}{
-		"invoice_id":     invoiceID,
-		"transaction_id": txHash,
-		"tx_hash":       txHash,
-		"merchant_id":   merchantID,
-		"network":       network,
-		"amount_paid":   amountPaid,
-		"currency":      currency,
-		"sender_address": senderAddress,
+		"invoice_id":       invoiceID,
+		"order_id":        orderID,
+		"tx_hash":         txHash,
+		"merchant_id":     merchantID,
+		"network":         network,
+		"amount":          amountPaid,
+		"currency":        currency,
+		"sender_address":  senderAddress,
 		"receiver_address": receiverAddress,
-		"block_number":  blockNumber,
-		"status":        "CONFIRMED",
+		"block_number":    blockNumber,
+		"status":          "confirmed",
 	}
 
 	err := s.webhookSvc.DispatchEvent(
@@ -425,20 +411,21 @@ func (s *SettlementService) dispatchInvoiceConfirmedWebhook(
 
 	if err != nil {
 		log.Printf(
-			"[Webhook] Failed to dispatch invoice.confirmed | merchant=%s | invoice=%s | tx=%s | error=%v",
+			"[Webhook] Failed to dispatch invoice.confirmed | merchant=%s | invoice=%s | order=%s | tx=%s | error=%v",
 			merchantID,
 			invoiceID,
+			orderID,
 			txHash,
 			err,
 		)
-
 		return
 	}
 
 	log.Printf(
-		"[Webhook] invoice.confirmed dispatched successfully | merchant=%s | invoice=%s | tx=%s",
+		"[Webhook] invoice.confirmed dispatched successfully | merchant=%s | invoice=%s | order=%s | tx=%s",
 		merchantID,
 		invoiceID,
+		orderID,
 		txHash,
 	)
 }

@@ -3,7 +3,7 @@ package middleware
 import (
 	"context"
 	"database/sql"
-	"fmt"
+
 	"net/http"
 	"os"
 	"strings"
@@ -68,7 +68,7 @@ func AuthMiddleware(db *sql.DB) func(http.Handler) http.Handler {
             }
 
             merchantID, ok := claims["merchant_id"].(string)
-			fmt.Println("Thsi is themerchan ",merchantID)
+
             if !ok || merchantID == "" {
                 utils.ErrorResponse(w, http.StatusUnauthorized, "Merchant ID missing from token claims")
                 return

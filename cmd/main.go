@@ -91,7 +91,13 @@ func getCORSHandler() *cors.Cors {
 				"http://localhost:5173",
 				"http://127.0.0.1:5173",
 				"http://localhost:5500",
-				"http://127.0.0.1:5500":
+				"http://127.0.0.1:5500",
+
+
+				"http://www.localhost:5173",
+				"http://www.127.0.0.1:5173",
+				"http://www.localhost:5500",
+				"http://www.127.0.0.1:5500":
 				return true
 			}
 

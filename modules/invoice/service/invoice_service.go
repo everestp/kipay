@@ -159,6 +159,7 @@ func mapToInvoiceResponse(inv *mo.Invoice) *dto.InvoiceResponse {
 
     return &dto.InvoiceResponse{
         InvoiceID:      inv.ID,
+        OrderID:         inv.OrderID,
         MerchantID:     inv.MerchantID,
         AmountUSD:      inv.AmountUSD,
         Currency:       inv.Currency,
