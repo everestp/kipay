@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -553,4 +554,92 @@ func (r *WebhookRepository) ListEndpoints(
 	}
 
 	return endpoints, nil
+}
+
+type WebhookTestEndpoint struct {
+	ID               string
+	URL              string
+	SubscribedEvents []string
+	IsActive         bool
+}
+
+func (r *WebhookRepository) GetWebhookEndpoint(
+	ctx context.Context,
+	webhookID string,
+	merchantID string,
+) (*WebhookTestEndpoint, error) {
+
+	var endpoint WebhookTestEndpoint
+	var events string
+
+	err := r.db.QueryRowContext(
+		ctx,
+		`
+		SELECT
+			id,
+			endpoint_url,
+			subscribed_events,
+			is_active
+		FROM webhook_endpoints
+		WHERE id = $1
+		  AND merchant_id = $2
+		LIMIT 1
+		`,
+		webhookID,
+		merchantID,
+	).Scan(
+		&endpoint.ID,
+		&endpoint.URL,
+		&events,
+		&endpoint.IsActive,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("webhook endpoint not found")
+		}
+
+		return nil, fmt.Errorf(
+			"failed to fetch webhook endpoint: %w",
+			err,
+		)
+	}
+
+	// PostgreSQL array returned as string:
+	// {invoice.confirmed,invoice.expired}
+	endpoint.SubscribedEvents =
+		parsePostgresTextArray(events)
+
+	return &endpoint, nil
+}
+
+func parsePostgresTextArray(value string) []string {
+	if len(value) < 2 {
+		return nil
+	}
+
+	value = value[1 : len(value)-1]
+
+	if value == "" {
+		return nil
+	}
+
+	var result []string
+	current := ""
+
+	for _, char := range value {
+		if char == ',' {
+			result = append(result, current)
+			current = ""
+			continue
+		}
+
+		current += string(char)
+	}
+
+	if current != "" {
+		result = append(result, current)
+	}
+
+	return result
 }

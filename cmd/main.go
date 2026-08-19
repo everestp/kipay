@@ -624,6 +624,10 @@ protectedRouter.HandleFunc(
 	"/webhooks/{id}/rotate-secret",
 	webhookCtrl.RotateSecret,
 ).Methods(http.MethodPost)
+protectedRouter.HandleFunc(
+	"/webhooks/{id}/test",
+	webhookCtrl.TestWebhook,
+).Methods(http.MethodPost)
 
 	// ============================================================
 	// 10. WALLETS

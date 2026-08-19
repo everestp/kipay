@@ -383,3 +383,93 @@ func (c *WebhookController) RotateSecret(
 		},
 	)
 }
+type TestWebhookRequest struct {
+	ID string `json:"id"`
+}
+
+type TestWebhookResponse struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+}
+
+func (c *WebhookController) TestWebhook(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+        merchantID, ok := middleware.GetMerchantIDFromContext(r.Context())
+
+
+
+
+	if !ok || merchantID == "" {
+		http.Error(
+			w,
+			"unauthorized",
+			http.StatusUnauthorized,
+		)
+		return
+	}
+
+vars := mux.Vars(r)
+
+webhookID := vars["id"]
+
+if webhookID == "" {
+	http.Error(
+		w,
+		"webhook id is required",
+		http.StatusBadRequest,
+	)
+	return
+}
+
+	if webhookID == "" {
+		http.Error(
+			w,
+			"webhook id is required",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	err :=
+		c.service.SendTestWebhook(
+			r.Context(),
+			webhookID,
+			merchantID,
+		)
+
+	if err != nil {
+		response := TestWebhookResponse{
+			Success: false,
+			Message: err.Error(),
+		}
+
+		w.Header().Set(
+			"Content-Type",
+			"application/json",
+		)
+
+		w.WriteHeader(
+			http.StatusBadGateway,
+		)
+
+		_ = json.NewEncoder(w).Encode(
+			response,
+		)
+
+		return
+	}
+
+	w.Header().Set(
+		"Content-Type",
+		"application/json",
+	)
+
+	_ = json.NewEncoder(w).Encode(
+		TestWebhookResponse{
+			Success: true,
+			Message: "Test webhook sent successfully",
+		},
+	)
+}

@@ -2,6 +2,7 @@ package service
 
 import (
 	"bytes"
+	"context"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
@@ -591,4 +592,128 @@ func (s *WebhookService) logDelivery(
 		responseCode,
 		status,
 	)
+}
+type TestWebhookPayload struct {
+	ID        string                 `json:"id"`
+	Type      string                 `json:"type"`
+	LiveMode  bool                   `json:"live_mode"`
+	CreatedAt string                 `json:"created_at"`
+	Data      map[string]interface{} `json:"data"`
+}
+
+func (s *WebhookService) SendTestWebhook(
+	ctx context.Context,
+	webhookID string,
+	merchantID string,
+) error {
+
+	webhook, err :=
+		s.repo.GetWebhookEndpoint(
+			ctx,
+			webhookID,
+			merchantID,
+		)
+
+	if err != nil {
+		return err
+	}
+
+	if !webhook.IsActive {
+		return fmt.Errorf(
+			"webhook endpoint is inactive",
+		)
+	}
+
+	payload := TestWebhookPayload{
+		ID:        fmt.Sprintf(
+			"evt_test_%d",
+			time.Now().UnixNano(),
+		),
+		Type:      "invoice.confirmed",
+		LiveMode:  false,
+		CreatedAt: time.Now().UTC().Format(
+			time.RFC3339,
+		),
+		Data: map[string]interface{}{
+			"test": true,
+			"invoice": map[string]interface{}{
+				"id":     "inv_test_123456",
+				"status": "confirmed",
+			},
+			"payment": map[string]interface{}{
+				"tx_hash": "test_transaction_hash",
+				"network": "testnet",
+				"currency": "USDC",
+				"amount":   10.00,
+			},
+		},
+	}
+
+	body, err :=
+		json.Marshal(payload)
+
+	if err != nil {
+		return fmt.Errorf(
+			"failed to encode test webhook payload: %w",
+			err,
+		)
+	}
+
+	req, err :=
+		http.NewRequestWithContext(
+			ctx,
+			http.MethodPost,
+			webhook.URL,
+			bytes.NewReader(body),
+		)
+
+	if err != nil {
+		return fmt.Errorf(
+			"failed to create webhook request: %w",
+			err,
+		)
+	}
+
+	req.Header.Set(
+		"Content-Type",
+		"application/json",
+	)
+
+	req.Header.Set(
+		"User-Agent",
+		"Kipay-Webhook-Test/1.0",
+	)
+
+	req.Header.Set(
+		"X-Kipay-Test",
+		"true",
+	)
+
+	req.Header.Set(
+		"X-Kipay-Event",
+		"invoice.confirmed",
+	)
+
+	resp, err :=
+		s.http.Do(req)
+
+	if err != nil {
+		return fmt.Errorf(
+			"failed to send test webhook: %w",
+			err,
+		)
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 ||
+		resp.StatusCode >= 300 {
+
+		return fmt.Errorf(
+			"webhook endpoint returned status %d",
+			resp.StatusCode,
+		)
+	}
+
+	return nil
 }
