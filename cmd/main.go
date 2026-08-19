@@ -7,11 +7,11 @@ import (
 	"os"
 	"regexp"
 
-	"go-backend/database"
-	"go-backend/pkg/middleware"
-
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
+
+	"go-backend/database"
+	"go-backend/pkg/middleware"
 
 	// Admin
 	adminController "go-backend/modules/admin/controller"
@@ -70,6 +70,7 @@ import (
 	walletService "go-backend/modules/wallet/service"
 
 	// Webhook
+	webhookController "go-backend/modules/webhook/controller"
 	webhookRepo "go-backend/modules/webhook/repository"
 	webhookService "go-backend/modules/webhook/service"
 )
@@ -83,6 +84,7 @@ var (
 func getCORSHandler() *cors.Cors {
 	return cors.New(cors.Options{
 		AllowOriginFunc: func(origin string) bool {
+
 			// Local development
 			switch origin {
 			case
@@ -102,6 +104,7 @@ func getCORSHandler() *cors.Cors {
 
 			return false
 		},
+
 		AllowedMethods: []string{
 			http.MethodGet,
 			http.MethodPost,
@@ -109,211 +112,616 @@ func getCORSHandler() *cors.Cors {
 			http.MethodDelete,
 			http.MethodOptions,
 		},
+
 		AllowedHeaders: []string{
 			"Authorization",
 			"Content-Type",
 			"X-API-KEY",
 			"X-Requested-With",
 		},
+
 		AllowCredentials: true,
 	})
 }
 
 func main() {
+
 	// ============================================================
-	// 1. Database Connection
+	// 1. DATABASE
 	// ============================================================
+
 	db := database.ConnectDB()
 	defer db.Close()
 
 	// ============================================================
-	// 2. Router & Base Path Setup (/api/v1)
+	// 2. ROUTER
 	// ============================================================
+
 	router := mux.NewRouter()
-	apiRouter := router.PathPrefix("/api/v1").Subrouter()
+
+	apiRouter :=
+		router.PathPrefix("/api/v1").Subrouter()
 
 	// ============================================================
-	// 3. Middlewares
-	// ============================================================
-	authMiddleware := middleware.AuthMiddleware(db)
-	apiKeyMiddleware := middleware.APIKeyMiddleware(db)
-
-	// ============================================================
-	// 4. Dependency Injection (Repositories, Services, Controllers)
+	// 3. MIDDLEWARE
 	// ============================================================
 
-	// Webhook
-	webhookRepoInstance := webhookRepo.NewWebhookRepository(db)
-	webhookServiceInstance := webhookService.NewWebhookService(webhookRepoInstance)
+	authMiddleware :=
+		middleware.AuthMiddleware(db)
 
+	apiKeyMiddleware :=
+		middleware.APIKeyMiddleware(db)
+
+	// ============================================================
+	// 4. REPOSITORIES + SERVICES + CONTROLLERS
+	// ============================================================
+
+	// ------------------------------------------------------------
 	// Merchant Authentication
-	merchantAuthRepoInstance := merchantAuthRepo.NewMerchantRepository(db)
-	merchantAuthServiceInstance := merchantAuthService.NewMerchantAuthService(merchantAuthRepoInstance)
-	merchantAuthCtrl := merchantAuthController.NewMerchantAuthController(merchantAuthServiceInstance)
+	// ------------------------------------------------------------
 
+	merchantAuthRepoInstance :=
+		merchantAuthRepo.NewMerchantRepository(db)
+
+	merchantAuthServiceInstance :=
+		merchantAuthService.NewMerchantAuthService(
+			merchantAuthRepoInstance,
+		)
+
+	merchantAuthCtrl :=
+		merchantAuthController.NewMerchantAuthController(
+			merchantAuthServiceInstance,
+		)
+
+	// ------------------------------------------------------------
+	// Webhook
+	//
+	// IMPORTANT:
+	// Create webhook service BEFORE settlement service because
+	// settlement service depends on webhook service.
+	// ------------------------------------------------------------
+
+	webhookRepoInstance :=
+		webhookRepo.NewWebhookRepository(db)
+
+	webhookServiceInstance :=
+		webhookService.NewWebhookService(
+			webhookRepoInstance,
+		)
+
+	webhookCtrl :=
+		webhookController.NewWebhookController(
+			webhookServiceInstance,
+		)
+
+	// ------------------------------------------------------------
 	// Invoice
-	invoiceRepoInstance := invoiceRepo.NewInvoiceRepository(db)
-	invoiceServiceInstance := invoiceService.NewInvoiceService(invoiceRepoInstance, merchantAuthRepoInstance)
-	invoiceCtrl := invoiceController.NewInvoiceController(invoiceServiceInstance)
+	// ------------------------------------------------------------
 
+	invoiceRepoInstance :=
+		invoiceRepo.NewInvoiceRepository(db)
+
+	invoiceServiceInstance :=
+		invoiceService.NewInvoiceService(
+			invoiceRepoInstance,
+			merchantAuthRepoInstance,
+		)
+
+	invoiceCtrl :=
+		invoiceController.NewInvoiceController(
+			invoiceServiceInstance,
+		)
+
+	// ------------------------------------------------------------
 	// Payment Links
-	paymentLinkRepoInstance := paymentLinkRepo.NewPaymentLinkRepository(db)
-	paymentLinkServiceInstance := paymentLinkService.NewPaymentLinkService(paymentLinkRepoInstance)
-	paymentLinkCtrl := paymentLinkController.NewPaymentLinkController(paymentLinkServiceInstance)
+	// ------------------------------------------------------------
 
+	paymentLinkRepoInstance :=
+		paymentLinkRepo.NewPaymentLinkRepository(db)
+
+	paymentLinkServiceInstance :=
+		paymentLinkService.NewPaymentLinkService(
+			paymentLinkRepoInstance,
+		)
+
+	paymentLinkCtrl :=
+		paymentLinkController.NewPaymentLinkController(
+			paymentLinkServiceInstance,
+		)
+
+	// ------------------------------------------------------------
 	// API Keys
-	apiKeyRepoInstance := apiKeyRepo.NewApiKeyRepository(db)
-	apiKeyServiceInstance := apiKeyService.NewApiKeyService(apiKeyRepoInstance)
-	apiKeyCtrl := apiKeyController.NewApiKeyController(apiKeyServiceInstance)
+	// ------------------------------------------------------------
 
+	apiKeyRepoInstance :=
+		apiKeyRepo.NewApiKeyRepository(db)
+
+	apiKeyServiceInstance :=
+		apiKeyService.NewApiKeyService(
+			apiKeyRepoInstance,
+		)
+
+	apiKeyCtrl :=
+		apiKeyController.NewApiKeyController(
+			apiKeyServiceInstance,
+		)
+
+	// ------------------------------------------------------------
 	// KYC
-	kycRepoInstance := kycRepo.NewKycRepository(db)
-	kycServiceInstance := kycService.NewKycService(kycRepoInstance)
-	kycCtrl := kycController.NewKycController(kycServiceInstance)
+	// ------------------------------------------------------------
 
+	kycRepoInstance :=
+		kycRepo.NewKycRepository(db)
+
+	kycServiceInstance :=
+		kycService.NewKycService(
+			kycRepoInstance,
+		)
+
+	kycCtrl :=
+		kycController.NewKycController(
+			kycServiceInstance,
+		)
+
+	// ------------------------------------------------------------
 	// Admin
-	adminRepoInstance := adminRepo.NewAdminRepository(db)
-	adminServiceInstance := adminService.NewAdminService(adminRepoInstance)
-	adminCtrl := adminController.NewAdminController(adminServiceInstance)
+	// ------------------------------------------------------------
 
+	adminRepoInstance :=
+		adminRepo.NewAdminRepository(db)
+
+	adminServiceInstance :=
+		adminService.NewAdminService(
+			adminRepoInstance,
+		)
+
+	adminCtrl :=
+		adminController.NewAdminController(
+			adminServiceInstance,
+		)
+
+	// ------------------------------------------------------------
 	// Dashboard
-	dashboardRepoInstance := dashboardRepo.NewDashboardRepository(db)
-	dashboardServiceInstance := dashboardService.NewDashboardService(dashboardRepoInstance)
-	dashboardCtrl := dashboardController.NewDashboardController(dashboardServiceInstance)
+	// ------------------------------------------------------------
 
+	dashboardRepoInstance :=
+		dashboardRepo.NewDashboardRepository(db)
+
+	dashboardServiceInstance :=
+		dashboardService.NewDashboardService(
+			dashboardRepoInstance,
+		)
+
+	dashboardCtrl :=
+		dashboardController.NewDashboardController(
+			dashboardServiceInstance,
+		)
+
+	// ------------------------------------------------------------
 	// Settlement / Rust gRPC
-grpcAddr := os.Getenv("RUST_GRPC_ADDR")
-if grpcAddr == "" {
-    grpcAddr = "grpc.kipay.xyz"
-}
-	rustClient, err := settlementClient.NewRustVerificationClient(grpcAddr)
-	if err != nil {
-		log.Fatalf("Failed to connect to Rust verification engine via gRPC: %v", err)
+	// ------------------------------------------------------------
+
+	grpcAddr :=
+		os.Getenv("RUST_GRPC_ADDR")
+
+	if grpcAddr == "" {
+		grpcAddr = "grpc.kipay.xyz"
 	}
-	log.Printf("Connected to Rust verification engine at %s", grpcAddr)
 
-	settlementRepoInstance := settlementRepo.NewSettlementRepository(db)
-	settlementServiceInstance := settlementService.NewSettlementService(settlementRepoInstance, webhookServiceInstance, rustClient)
-	settlementCtrl := settlementController.NewSettlementController(settlementServiceInstance)
+	rustClient, err :=
+		settlementClient.NewRustVerificationClient(
+			grpcAddr,
+		)
 
+	if err != nil {
+		log.Fatalf(
+			"Failed to connect to Rust verification engine via gRPC: %v",
+			err,
+		)
+	}
+
+	log.Printf(
+		"Connected to Rust verification engine at %s",
+		grpcAddr,
+	)
+
+	settlementRepoInstance :=
+		settlementRepo.NewSettlementRepository(db)
+
+	/*
+	 * Webhook service is injected here.
+	 *
+	 * Settlement flow:
+	 *
+	 * blockchain payment
+	 *       ↓
+	 * Rust verification
+	 *       ↓
+	 * settlement service
+	 *       ↓
+	 * webhook service
+	 *       ↓
+	 * merchant backend
+	 */
+
+	settlementServiceInstance :=
+		settlementService.NewSettlementService(
+			settlementRepoInstance,
+			webhookServiceInstance,
+			rustClient,
+		)
+
+	settlementCtrl :=
+		settlementController.NewSettlementController(
+			settlementServiceInstance,
+		)
+
+	// ------------------------------------------------------------
 	// Payout
-	payoutRepoInstance := payoutRepo.NewPayoutRepository(db)
-	payoutServiceInstance := payoutService.NewPayoutService(payoutRepoInstance)
-	payoutCtrl := payoutController.NewPayoutController(payoutServiceInstance)
+	// ------------------------------------------------------------
 
+	payoutRepoInstance :=
+		payoutRepo.NewPayoutRepository(db)
+
+	payoutServiceInstance :=
+		payoutService.NewPayoutService(
+			payoutRepoInstance,
+		)
+
+	payoutCtrl :=
+		payoutController.NewPayoutController(
+			payoutServiceInstance,
+		)
+
+	// ------------------------------------------------------------
 	// Transactions
-	txRepoInstance := txRepo.NewTransactionRepository(db)
-	txServiceInstance := txService.NewTransactionService(txRepoInstance)
-	txCtrl := txController.NewTransactionController(txServiceInstance)
+	// ------------------------------------------------------------
 
+	txRepoInstance :=
+		txRepo.NewTransactionRepository(db)
+
+	txServiceInstance :=
+		txService.NewTransactionService(
+			txRepoInstance,
+		)
+
+	txCtrl :=
+		txController.NewTransactionController(
+			txServiceInstance,
+		)
+
+	// ------------------------------------------------------------
 	// Wallet
-	walletRepoInstance := walletRepo.NewWalletRepository(db)
-	walletServiceInstance := walletService.NewWalletService(walletRepoInstance)
-	walletCtrl := walletController.NewWalletController(walletServiceInstance)
+	// ------------------------------------------------------------
+
+	walletRepoInstance :=
+		walletRepo.NewWalletRepository(db)
+
+	walletServiceInstance :=
+		walletService.NewWalletService(
+			walletRepoInstance,
+		)
+
+	walletCtrl :=
+		walletController.NewWalletController(
+			walletServiceInstance,
+		)
 
 	// ============================================================
-	// 5. ROUTE DEFINITIONS
+	// 5. PUBLIC ROUTES
 	// ============================================================
 
 	// ------------------------------------------------------------
-	// A. PUBLIC ROUTES (No authentication required)
+	// Authentication
 	// ------------------------------------------------------------
-	apiRouter.HandleFunc("/auth/register", merchantAuthCtrl.Register).Methods(http.MethodPost)
-	apiRouter.HandleFunc("/auth/login", merchantAuthCtrl.Login).Methods(http.MethodPost)
-	apiRouter.HandleFunc("/auth/logout", merchantAuthCtrl.Logout).Methods(http.MethodPost)
 
-	// Public Payment Links & Invoices
-	apiRouter.HandleFunc("/payment-links/{linkId}", paymentLinkCtrl.GetPAyentLinkById).Methods(http.MethodGet)
-	apiRouter.HandleFunc("/payment-links/invoices", invoiceCtrl.CreateLinkInvoice).Methods(http.MethodPost)
-	apiRouter.HandleFunc("/invoices/{id}/status", invoiceCtrl.GetInvoiceStatus).Methods(http.MethodGet)
-
-	// Internal Settlement Webhooks
-	apiRouter.HandleFunc("/internal/link/settlement", settlementCtrl.HandleLinkInvoiceVerificationEvent).Methods(http.MethodPost)
-		apiRouter.HandleFunc("/internal/api/settlement", settlementCtrl.HandleAPIInvpiceVerificationEvent).Methods(http.MethodPost)
-
-
-	// ------------------------------------------------------------
-	// B. EXTERNAL API ROUTES (Protected by API Key Middleware)
-	// Base path: /api/v1/external/...
-	// ------------------------------------------------------------
-	apiApiKeyRouter := apiRouter.PathPrefix("/external").Subrouter()
-	apiApiKeyRouter.Use(apiKeyMiddleware)
-
-	// Accessible at: POST /api/v1/external/invoices
-	apiApiKeyRouter.HandleFunc("/invoices", invoiceCtrl.CreateDirectInvoice).Methods(http.MethodPost)
-	apiApiKeyRouter.HandleFunc("/invoices/{invoice_id}", invoiceCtrl.GetInvoiceStatus).Methods(http.MethodPost)
 	apiRouter.HandleFunc(
-	"/invoices/direct/{invoiceID}",
-	invoiceCtrl.GetDirectInvoiceByID,
+		"/auth/register",
+		merchantAuthCtrl.Register,
+	).Methods(http.MethodPost)
+
+	apiRouter.HandleFunc(
+		"/auth/login",
+		merchantAuthCtrl.Login,
+	).Methods(http.MethodPost)
+
+	apiRouter.HandleFunc(
+		"/auth/logout",
+		merchantAuthCtrl.Logout,
+	).Methods(http.MethodPost)
+
+	// ------------------------------------------------------------
+	// Public Payment Links
+	// ------------------------------------------------------------
+
+	apiRouter.HandleFunc(
+		"/payment-links/{linkId}",
+		paymentLinkCtrl.GetPAyentLinkById,
+	).Methods(http.MethodGet)
+
+	apiRouter.HandleFunc(
+		"/payment-links/invoices",
+		invoiceCtrl.CreateLinkInvoice,
+	).Methods(http.MethodPost)
+
+	apiRouter.HandleFunc(
+		"/invoices/{id}/status",
+		invoiceCtrl.GetInvoiceStatus,
+	).Methods(http.MethodGet)
+
+	// ============================================================
+	// 6. INTERNAL SETTLEMENT ROUTES
+	// ============================================================
+
+	apiRouter.HandleFunc(
+		"/internal/link/settlement",
+		settlementCtrl.HandleLinkInvoiceVerificationEvent,
+	).Methods(http.MethodPost)
+
+	apiRouter.HandleFunc(
+		"/internal/api/settlement",
+		settlementCtrl.HandleAPIInvpiceVerificationEvent,
+	).Methods(http.MethodPost)
+
+	// ============================================================
+	// 7. EXTERNAL API ROUTES
+	// ============================================================
+
+	apiApiKeyRouter :=
+		apiRouter.PathPrefix("/external").Subrouter()
+
+	apiApiKeyRouter.Use(
+		apiKeyMiddleware,
+	)
+
+	apiApiKeyRouter.HandleFunc(
+		"/invoices",
+		invoiceCtrl.CreateDirectInvoice,
+	).Methods(http.MethodPost)
+
+	apiApiKeyRouter.HandleFunc(
+		"/invoices/{invoice_id}",
+		invoiceCtrl.GetInvoiceStatus,
+	).Methods(http.MethodPost)
+
+	apiRouter.HandleFunc(
+		"/invoices/direct/{invoiceID}",
+		invoiceCtrl.GetDirectInvoiceByID,
+	).Methods(http.MethodGet)
+
+	// ============================================================
+	// 8. MERCHANT DASHBOARD ROUTES
+	// ============================================================
+
+	protectedRouter :=
+		apiRouter.PathPrefix("").Subrouter()
+
+	protectedRouter.Use(
+		authMiddleware,
+	)
+
+	// ------------------------------------------------------------
+	// Merchant Profile
+	// ------------------------------------------------------------
+
+	protectedRouter.HandleFunc(
+		"/auth/me",
+		merchantAuthCtrl.GetCurrentUser,
+	).Methods(http.MethodGet)
+
+	// ------------------------------------------------------------
+	// Payment Links
+	// ------------------------------------------------------------
+
+	protectedRouter.HandleFunc(
+		"/payment-links",
+		paymentLinkCtrl.Create,
+	).Methods(http.MethodPost)
+
+	protectedRouter.HandleFunc(
+		"/payment-links",
+		paymentLinkCtrl.GetAllPaymentLinkByMerchant,
+	).Methods(http.MethodGet)
+
+	protectedRouter.HandleFunc(
+		"/transaction/invoices/{linkId}",
+		paymentLinkCtrl.Update,
+	).Methods(http.MethodPut)
+
+	// ------------------------------------------------------------
+	// Invoices
+	// ------------------------------------------------------------
+
+	protectedRouter.HandleFunc(
+		"/link/invoices",
+		invoiceCtrl.CreateLinkInvoice,
+	).Methods(http.MethodPost)
+
+	// ------------------------------------------------------------
+	// API Keys
+	// ------------------------------------------------------------
+
+	protectedRouter.HandleFunc(
+		"/api-keys",
+		apiKeyCtrl.Create,
+	).Methods(http.MethodPost)
+
+	protectedRouter.HandleFunc(
+		"/api-keys",
+		apiKeyCtrl.GetAll,
+	).Methods(http.MethodGet)
+
+	protectedRouter.HandleFunc(
+		"/api-keys/{id}",
+		apiKeyCtrl.Delete,
+	).Methods(http.MethodDelete)
+
+	// ------------------------------------------------------------
+	// KYC
+	// ------------------------------------------------------------
+
+	protectedRouter.HandleFunc(
+		"/kyc/documents",
+		kycCtrl.Submit,
+	).Methods(http.MethodPost)
+
+	protectedRouter.HandleFunc(
+		"/kyc/status",
+		kycCtrl.GetStatus,
+	).Methods(http.MethodGet)
+
+	// ------------------------------------------------------------
+	// Dashboard
+	// ------------------------------------------------------------
+
+	protectedRouter.HandleFunc(
+		"/dashboard/metrics",
+		dashboardCtrl.GetMetrics,
+	).Methods(http.MethodGet)
+
+	// ------------------------------------------------------------
+	// Payouts
+	// ------------------------------------------------------------
+
+	protectedRouter.HandleFunc(
+		"/payouts",
+		payoutCtrl.Create,
+	).Methods(http.MethodPost)
+
+	// ============================================================
+	// 9. WEBHOOK MANAGEMENT
+	// ============================================================
+
+	/*
+	 * These endpoints are merchant dashboard APIs.
+	 *
+	 * They MUST be protected by authMiddleware.
+	 */
+
+	// ============================================================
+// WEBHOOK MANAGEMENT
+// Protected by merchant auth middleware
+// ============================================================
+
+protectedRouter.HandleFunc(
+	"/webhooks",
+	webhookCtrl.Register,
+).Methods(http.MethodPost)
+
+protectedRouter.HandleFunc(
+	"/webhooks",
+	webhookCtrl.List,
 ).Methods(http.MethodGet)
 
+// Delete disabled for now
+protectedRouter.HandleFunc(
+	"/webhooks/{id}",
+	webhookCtrl.Delete,
+).Methods(http.MethodDelete)
 
-
-	// ------------------------------------------------------------
-	// C. MERCHANT DASHBOARD ROUTES (Protected by Session/Auth Middleware)
-	// Base path: /api/v1/...
-	// ------------------------------------------------------------
-	protectedRouter := apiRouter.PathPrefix("").Subrouter()
-	protectedRouter.Use(authMiddleware)
-
-	// Merchant Profile
-	protectedRouter.HandleFunc("/auth/me", merchantAuthCtrl.GetCurrentUser).Methods(http.MethodGet)
-
-	// Payment Links
-	protectedRouter.HandleFunc("/payment-links", paymentLinkCtrl.Create).Methods(http.MethodPost)
-	protectedRouter.HandleFunc("/payment-links", paymentLinkCtrl.GetAllPaymentLinkByMerchant).Methods(http.MethodGet)
-	protectedRouter.HandleFunc("/transaction/invoices/{linkId}", paymentLinkCtrl.Update).Methods(http.MethodPut)
-
-	// Invoices
-	protectedRouter.HandleFunc("/link/invoices", invoiceCtrl.CreateLinkInvoice).Methods(http.MethodPost)
-
-	// API Keys Management
-	protectedRouter.HandleFunc("/api-keys", apiKeyCtrl.Create).Methods(http.MethodPost)
-	protectedRouter.HandleFunc("/api-keys", apiKeyCtrl.GetAll).Methods(http.MethodGet)
-	protectedRouter.HandleFunc("/api-keys/{id}", apiKeyCtrl.Delete).Methods(http.MethodDelete)
-
-	// KYC
-	protectedRouter.HandleFunc("/kyc/documents", kycCtrl.Submit).Methods(http.MethodPost)
-	protectedRouter.HandleFunc("/kyc/status", kycCtrl.GetStatus).Methods(http.MethodGet)
-
-	// Dashboard Metrics
-	protectedRouter.HandleFunc("/dashboard/metrics", dashboardCtrl.GetMetrics).Methods(http.MethodGet)
-
-	// Payouts
-	protectedRouter.HandleFunc("/payouts", payoutCtrl.Create).Methods(http.MethodPost)
-
-	// Wallets Management
-	protectedRouter.HandleFunc("/wallets", walletCtrl.Create).Methods(http.MethodPost)
-	protectedRouter.HandleFunc("/wallets", walletCtrl.List).Methods(http.MethodGet)
-	protectedRouter.HandleFunc("/wallets/{id}", walletCtrl.GetByID).Methods(http.MethodGet)
-	protectedRouter.HandleFunc("/wallets/{id}", walletCtrl.Update).Methods(http.MethodPut)
-	protectedRouter.HandleFunc("/wallets/{id}", walletCtrl.Delete).Methods(http.MethodDelete)
-
-	// Transactions
-	protectedRouter.HandleFunc("/transactions/invoices", txCtrl.ListInvoices).Methods(http.MethodGet)
-	protectedRouter.HandleFunc("/transactions/link-invoices", txCtrl.ListAllLinkInvoices).Methods(http.MethodGet)
-	protectedRouter.HandleFunc("/transaction/invoices/{payment-link-id}", txCtrl.ListAllLinkInvoicesByPaymentLinkId).Methods(http.MethodGet)
-	protectedRouter.HandleFunc("/transactions/settled", txCtrl.ListTransactions).Methods(http.MethodGet)
-
-
-	// ------------------------------------------------------------
-	// D. ADMIN ROUTES
-	// ------------------------------------------------------------
-	apiRouter.HandleFunc("/admin/merchants", adminCtrl.ListMerchants).Methods(http.MethodGet)
-	apiRouter.HandleFunc("/admin/merchants/{merchantId}/status", adminCtrl.UpdateMerchantStatus).Methods(http.MethodPut)
-
+// Rotate webhook secret
+protectedRouter.HandleFunc(
+	"/webhooks/{id}/rotate-secret",
+	webhookCtrl.RotateSecret,
+).Methods(http.MethodPost)
 
 	// ============================================================
-	// 6. Server Initialization & CORS
+	// 10. WALLETS
 	// ============================================================
-	corsHandler := getCORSHandler()
-	handler := corsHandler.Handler(router)
 
-	port := os.Getenv("PORT")
+	protectedRouter.HandleFunc(
+		"/wallets",
+		walletCtrl.Create,
+	).Methods(http.MethodPost)
+
+	protectedRouter.HandleFunc(
+		"/wallets",
+		walletCtrl.List,
+	).Methods(http.MethodGet)
+
+	protectedRouter.HandleFunc(
+		"/wallets/{id}",
+		walletCtrl.GetByID,
+	).Methods(http.MethodGet)
+
+	protectedRouter.HandleFunc(
+		"/wallets/{id}",
+		walletCtrl.Update,
+	).Methods(http.MethodPut)
+
+	protectedRouter.HandleFunc(
+		"/wallets/{id}",
+		walletCtrl.Delete,
+	).Methods(http.MethodDelete)
+
+	// ============================================================
+	// 11. TRANSACTIONS
+	// ============================================================
+
+	protectedRouter.HandleFunc(
+		"/transactions/invoices",
+		txCtrl.ListInvoices,
+	).Methods(http.MethodGet)
+
+	protectedRouter.HandleFunc(
+		"/transactions/link-invoices",
+		txCtrl.ListAllLinkInvoices,
+	).Methods(http.MethodGet)
+
+	protectedRouter.HandleFunc(
+		"/transaction/invoices/{payment-link-id}",
+		txCtrl.ListAllLinkInvoicesByPaymentLinkId,
+	).Methods(http.MethodGet)
+
+	protectedRouter.HandleFunc(
+		"/transactions/settled",
+		txCtrl.ListTransactions,
+	).Methods(http.MethodGet)
+
+	// ============================================================
+	// 12. ADMIN
+	// ============================================================
+
+	apiRouter.HandleFunc(
+		"/admin/merchants",
+		adminCtrl.ListMerchants,
+	).Methods(http.MethodGet)
+
+	apiRouter.HandleFunc(
+		"/admin/merchants/{merchantId}/status",
+		adminCtrl.UpdateMerchantStatus,
+	).Methods(http.MethodPut)
+
+	// ============================================================
+	// 13. CORS
+	// ============================================================
+
+	corsHandler :=
+		getCORSHandler()
+
+	handler :=
+		corsHandler.Handler(router)
+
+	// ============================================================
+	// 14. SERVER
+	// ============================================================
+
+	port :=
+		os.Getenv("PORT")
+
 	if port == "" {
 		port = "8081"
 	}
 
-	fmt.Printf("kipay.xyz backend running on port %s...\n", port)
-	log.Fatal(http.ListenAndServe(":"+port, handler))
+	fmt.Printf(
+		"kipay.xyz backend running on port %s...\n",
+		port,
+	)
+
+	log.Fatal(
+		http.ListenAndServe(
+			":"+port,
+			handler,
+		),
+	)
 }

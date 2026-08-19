@@ -48,6 +48,15 @@ type APIKey struct {
     CreatedAt  time.Time `json:"created_at" db:"created_at"`
 }
 
+
+type WebhookEndpointInfo struct {
+	ID               string
+	URL              string
+	SubscribedEvents []string
+	IsActive         bool
+	CreatedAt        string
+}
+
 type MerchantKYCDocument struct {
     ID              string     `json:"id" db:"id"`
     MerchantID      string     `json:"merchant_id" db:"merchant_id"`
